@@ -12,12 +12,19 @@
 ---
 
 <p align="center">
-  <img src="assets/Screenshot.png" alt="JEO-PRD Screenshot" width="700">
+  <img src="assets/Screenshot_1.png" alt="JEO-PRD Question" width="800">
 </p>
 
-## Install
+<details>
+<summary>See more screenshots</summary>
+<p align="center">
+  <img src="assets/Screenshot_2.png" alt="JEO-PRD Feedback" width="800">
+  <br><br>
+  <img src="assets/Screenshot_3.png" alt="JEO-PRD Results" width="800">
+</p>
+</details>
 
-**30-second setup:**
+## Install
 
 ```bash
 # Global install (available in all projects)
@@ -109,6 +116,7 @@ jeo-prd/
 ├── README.md
 ├── LICENSE               ← AGPL-3.0
 ├── CONTRIBUTING.md
+├── assets/               ← logo + screenshots for README
 └── server/
     ├── server.js         ← Node.js server (SSE + REST)
     ├── index.html        ← web UI
