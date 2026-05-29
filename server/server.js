@@ -107,6 +107,18 @@ function startWatching() {
   pollInterval = setInterval(() => {
     broadcastState();
   }, 300);
+
+  // SSE keepalive - send comment every 15s to prevent connection timeout
+  setInterval(() => {
+    sseClients = sseClients.filter(client => {
+      try {
+        client.write(': keepalive\n\n');
+        return true;
+      } catch (e) {
+        return false;
+      }
+    });
+  }, 15000);
 }
 
 function serveStaticFile(res, filePath, contentType) {
