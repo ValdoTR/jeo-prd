@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/Logo-orig.png" alt="JEO-PRD" height="120">
+  <img src="assets/Logo.png" alt="JEO-PRD" height="120">
 </p>
 
 <h3 align="center">The quiz show that tests if you REALLY understand your code before shipping</h3>
