@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JEO-PRD</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --surface-2: #1a1a24;
+      --border: #2a2a3a;
+      --text: #f5f5f7;
+      --text-muted: #8888a0;
+      --accent: #8B2942;
+      --accent-light: #a84a5e;
+      --gold: #D4A84B;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --error: #ef4444;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* Subtle animated gradient background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 0% 0%, rgba(139, 41, 66, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 100% 100%, rgba(34, 197, 94, 0.1) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    .header {
+      background: linear-gradient(180deg, var(--surface) 0%, rgba(17, 17, 24, 0.95) 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 0.875rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      backdrop-filter: blur(8px);
+    }
+
+    .logo {
+      height: 48px;
+    }
+    .logo img {
+      height: 100%;
+      width: auto;
+    }
+
+    .header-stats {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .stat {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+    .stat span { color: var(--text); font-weight: 600; }
+
+    .score-pill {
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+      color: white;
+      padding: 0.4rem 1.1rem;
+      border-radius: 99px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      box-shadow: 0 2px 10px rgba(139, 41, 66, 0.3);
+    }
+
+    .level-badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.25rem 0.6rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .level-badge:empty { display: none; }
+    .level-badge.junior { color: var(--success); border-color: var(--success); }
+    .level-badge.senior { color: var(--gold); border-color: var(--gold); }
+
+    /* Host Section */
+    .host-section {
+      background: linear-gradient(180deg, rgba(17, 17, 24, 0.95) 0%, var(--bg) 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      transition: background 0.4s ease;
+    }
+    .host-section.correct {
+      background: linear-gradient(135deg, rgba(34, 197, 94, 0.25) 0%, rgba(34, 197, 94, 0.05) 100%);
+      border-bottom-color: var(--success);
+    }
+    .host-section.partial {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(245, 158, 11, 0.05) 100%);
+      border-bottom-color: var(--warning);
+    }
+    .host-section.wrong {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.25) 0%, rgba(239, 68, 68, 0.05) 100%);
+      border-bottom-color: var(--error);
+    }
+
+    .host-avatar {
+      flex-shrink: 0;
+    }
+    .host-avatar img {
+      height: 92px;
+      width: auto;
+      object-fit: cover;
+    }
+
+    .host-speech {
+      flex: 1;
+      font-size: 1.05rem;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--surface-2);
+      padding: 0.875rem 1.125rem;
+      border-radius: 1rem;
+      border-top-left-radius: 0.25rem;
+      border: 1px solid var(--border);
+    }
+
+    .host-speech.loading {
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .host-speech .loading-dots {
+      display: flex;
+      gap: 0.3rem;
+    }
+    .host-speech .loading-dots span {
+      width: 8px;
+      height: 8px;
+      background: var(--text-muted);
+      border-radius: 50%;
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+    .host-speech .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .host-speech .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    /* Main Content */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      max-width: 900px;
+      margin: 0 auto;
+      width: 100%;
+      padding: 1.5rem;
+    }
+
+    /* Card */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+    }
+
+    .card-header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .repo-name {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 500;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .badge {
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+      color: white;
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.35rem 0.875rem;
+      border-radius: 99px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      box-shadow: 0 2px 8px rgba(139, 41, 66, 0.3);
+    }
+
+    .points {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #fbbf24;
+      text-shadow: 0 0 20px rgba(251, 191, 36, 0.4);
+    }
+
+    .card-body {
+      padding: 1.5rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Question */
+    .question-text {
+      font-size: 1.1rem;
+      line-height: 1.7;
+      margin-bottom: 1.25rem;
+    }
+
+    .code-block {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin-bottom: 1.25rem;
+      overflow-x: auto;
+      font-size: 0.875rem;
+    }
+    .code-block pre { margin: 0; }
+
+    /* Input */
+    .input-section { margin-top: auto; }
+
+    .answer-input {
+      width: 100%;
+      min-height: 100px;
+      background: var(--surface-2);
+      border: 2px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1rem;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 1rem;
+      resize: none;
+      transition: border-color 0.2s;
+    }
+    .answer-input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .answer-input::placeholder { color: var(--text-muted); }
+    .answer-input:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .input-footer {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      margin-top: 0.75rem;
+      gap: 0.75rem;
+    }
+
+    .input-hint {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .btn {
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 600;
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.5rem;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+    .btn-primary:hover:not(:disabled) { background: var(--accent-light); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-secondary {
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { background: var(--border); }
+
+    /* Feedback */
+    .feedback-result {
+      text-align: center;
+      padding: 2rem;
+      border-radius: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+    .feedback-result.correct {
+      background: rgba(34, 197, 94, 0.1);
+      border: 2px solid var(--success);
+    }
+    .feedback-result.partial {
+      background: rgba(245, 158, 11, 0.1);
+      border: 2px solid var(--warning);
+    }
+    .feedback-result.wrong {
+      background: rgba(239, 68, 68, 0.1);
+      border: 2px solid var(--error);
+    }
+
+    .feedback-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+    .feedback-label { font-size: 1.5rem; font-weight: 700; }
+    .feedback-result.correct .feedback-label { color: var(--success); }
+    .feedback-result.partial .feedback-label { color: var(--warning); }
+    .feedback-result.wrong .feedback-label { color: var(--error); }
+
+    .explanation {
+      background: var(--surface-2);
+      border-radius: 0.5rem;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      line-height: 1.7;
+    }
+
+    .score-bar-section {
+      background: var(--surface-2);
+      padding: 1rem;
+      border-radius: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .score-bar-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.875rem;
+      margin-bottom: 0.5rem;
+      color: var(--text-muted);
+    }
+    .score-bar-header span:last-child { color: var(--text); font-weight: 600; }
+    .score-bar {
+      height: 8px;
+      background: var(--bg);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .score-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--gold));
+      border-radius: 4px;
+      transition: width 0.8s ease-out;
+    }
+
+    /* Verdict */
+    .verdict-content { text-align: center; }
+    .verdict-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .verdict-meta { color: var(--text-muted); margin-bottom: 1.5rem; }
+    .verdict-meta span { color: var(--accent-light); }
+
+    .verdict-score {
+      font-size: 3rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--accent), var(--gold));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin: 1rem 0;
+    }
+
+    /* Verdict Timeline - GitLab style */
+    .verdict-timeline {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      margin: 2rem auto;
+      max-width: 500px;
+      position: relative;
+    }
+    .timeline-track {
+      position: absolute;
+      top: 14px;
+      left: 40px;
+      right: 40px;
+      height: 3px;
+      background: var(--border);
+      z-index: 0;
+    }
+    .timeline-progress {
+      height: 100%;
+      background: var(--success);
+      transition: width 0.6s ease-out;
+    }
+    .timeline-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 1;
+      position: relative;
+      z-index: 1;
+    }
+    .timeline-circle {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      background: var(--surface-2);
+      border: 2px solid var(--border);
+      color: var(--text-muted);
+    }
+    .timeline-circle.passed {
+      background: var(--success);
+      border-color: var(--success);
+      color: white;
+    }
+    .timeline-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-align: center;
+      max-width: 70px;
+    }
+    .timeline-label.active {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .verdict-badge {
+      display: inline-block;
+      padding: 0.75rem 1.5rem;
+      border-radius: 99px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin: 1rem 0;
+    }
+    .verdict-badge.merge-ready { background: rgba(34,197,94,0.15); border: 2px solid var(--success); color: var(--success); }
+    .verdict-badge.review-first { background: rgba(245,158,11,0.15); border: 2px solid var(--warning); color: var(--warning); }
+    .verdict-badge.risky { background: rgba(168,85,247,0.15); border: 2px solid #a855f7; color: #a855f7; }
+    .verdict-badge.do-not-merge { background: rgba(239,68,68,0.15); border: 2px solid var(--error); color: var(--error); }
+
+    .weak-areas {
+      background: var(--surface-2);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin: 1.5rem auto;
+      max-width: 400px;
+      text-align: left;
+    }
+    .weak-areas h4 { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem; }
+    .weak-areas ul { list-style: none; }
+    .weak-areas li { padding: 0.25rem 0; color: var(--warning); }
+    .weak-areas li::before { content: '⚠️ '; }
+
+    /* Waiting */
+    .waiting-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+    .waiting-logo {
+      font-size: 3rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--accent), var(--accent-light));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 1.5rem;
+    }
+    .waiting-text { color: var(--text-muted); margin-bottom: 0.5rem; }
+    .waiting-hint { font-size: 0.875rem; color: var(--text-muted); }
+    .waiting-hint code {
+      background: var(--surface-2);
+      padding: 0.2rem 0.5rem;
+      border-radius: 0.25rem;
+      color: var(--accent-light);
+    }
+
+    .dots {
+      display: flex;
+      gap: 0.4rem;
+      margin-bottom: 1rem;
+    }
+    .dots span {
+      width: 10px;
+      height: 10px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+    .dots span:nth-child(2) { animation-delay: 0.2s; }
+    .dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes pulse {
+      0%, 80%, 100% { opacity: 0.4; transform: scale(1); }
+      40% { opacity: 1; transform: scale(1.2); }
+    }
+
+    /* Level selection buttons */
+    .level-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+      min-width: 140px;
+      padding: 1.25rem 1.5rem;
+      background: var(--surface-2);
+      border: 2px solid var(--border);
+      border-radius: 0.75rem;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    .level-btn:hover {
+      border-color: var(--accent);
+      background: var(--surface);
+    }
+    .level-btn.selected {
+      border-color: var(--accent);
+      background: linear-gradient(135deg, rgba(139, 41, 66, 0.2) 0%, rgba(139, 41, 66, 0.05) 100%);
+      box-shadow: 0 0 20px rgba(139, 41, 66, 0.3);
+    }
+    .level-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .level-icon { font-size: 1.75rem; }
+    .level-name { font-weight: 700; font-size: 1rem; }
+    .level-desc { font-size: 0.8rem; color: var(--text-muted); }
+
+    .confetti { position: fixed; pointer-events: none; z-index: 1000; }
+    .hidden { display: none !important; }
+
+    @media (max-width: 640px) {
+      .header { flex-wrap: wrap; gap: 0.5rem; }
+      .header-stats { width: 100%; justify-content: center; }
+      .host-section { flex-direction: column; text-align: center; }
+      .main { padding: 1rem; }
+      .card-body { padding: 1rem; }
+      .verdict-score { font-size: 2rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="logo"><img src="/images/Logo.png" alt="JEO-PRD"></div>
+      <div class="header-stats">
+        <div class="stat">Question <span id="q-num">-</span> / <span id="q-total">-</span></div>
+        <div class="level-badge" id="level-badge"></div>
+        <div class="score-pill" id="score-pill">0 pts</div>
+      </div>
+    </header>
+
+    <div class="host-section">
+      <div class="host-avatar">
+        <img id="host-img" src="/images/Welcome.png" alt="Host">
+      </div>
+      <div class="host-speech" id="host-speech">Welcome to JEO-PRD!</div>
+    </div>
+
+    <main class="main">
+      <div id="phase-waiting" class="card">
+        <div class="card-body">
+          <div class="waiting-content">
+            <div class="waiting-logo">JEO-PRD</div>
+            <div class="dots"><span></span><span></span><span></span></div>
+            <div class="waiting-text">Waiting for contestants...</div>
+            <div class="waiting-hint">Run <code>/jeo-prd</code> in Claude Code</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="phase-setup" class="card hidden"><div class="card-body"></div></div>
+      <div id="phase-banner" class="card hidden"><div class="card-body"></div></div>
+      <div id="phase-question" class="card hidden"></div>
+      <div id="phase-chat" class="card hidden"></div>
+      <div id="phase-feedback" class="card hidden"><div class="card-body"></div></div>
+      <div id="phase-verdict" class="card hidden"><div class="card-body"></div></div>
+    </main>
+  </div>
+
+  <script>
+    let state = null;
+    let submitting = false;
+    let quizData = [];
+
+    const IMAGES = {
+      welcome: '/images/Welcome.png',
+      thinking: '/images/Thinking.png',
+      correct: '/images/Correct.png',
+      partial: '/images/Partial.png',
+      wrong: '/images/Wrong.png',
+      excited: '/images/Excited.png',
+      happy: '/images/Happy.png',
+      disappointed: '/images/Disappointed.png',
+      chat: '/images/Chat.png'
+    };
+
+    let currentScore = 0;
+    let cachedQuestion = null;
+
+    function setHost(img, text, loading = false, mood = null) {
+      document.getElementById('host-img').src = IMAGES[img] || IMAGES.welcome;
+      const speech = document.getElementById('host-speech');
+      speech.classList.toggle('loading', loading);
+
+      if (loading) {
+        speech.innerHTML = (text ? text + ' ' : '') + '<span class="loading-dots"><span></span><span></span><span></span></span>';
+      } else {
+        speech.textContent = text || '';
+      }
+
+      // Update host section background based on mood
+      const hostSection = document.querySelector('.host-section');
+      hostSection.classList.remove('correct', 'partial', 'wrong');
+      if (mood) hostSection.classList.add(mood);
+    }
+
+    function updateStats(q, total, score, level) {
+      document.getElementById('q-num').textContent = q || '-';
+      document.getElementById('q-total').textContent = total || '-';
+      document.getElementById('score-pill').textContent = `${score || 0} pts`;
+      const levelBadge = document.getElementById('level-badge');
+      if (level) {
+        levelBadge.textContent = level;
+        levelBadge.className = 'level-badge ' + level;
+      } else {
+        levelBadge.textContent = '';
+        levelBadge.className = 'level-badge';
+      }
+    }
+
+    // SSE + polling
+    function connect() {
+      const es = new EventSource('/events');
+      es.onmessage = e => { try { handle(JSON.parse(e.data)); } catch(err) {} };
+      es.onerror = () => setTimeout(connect, 2000);
+    }
+    setInterval(async () => {
+      try { handle(await (await fetch('/state')).json()); } catch(e) {}
+    }, 500);
+
+    function handle(s) {
+      if (JSON.stringify(s) === JSON.stringify(state)) return;
+      const prev = state?.phase;
+      state = s;
+
+      document.querySelectorAll('[id^="phase-"]').forEach(el => el.classList.add('hidden'));
+
+      if ((s.phase === 'question' || s.phase === 'chat') && prev !== 'question' && prev !== 'chat') {
+        submitting = false;
+      }
+
+      // Update score from feedback/verdict, keep local tracking
+      if (s.feedback?.score !== undefined) currentScore = s.feedback.score;
+      if (s.verdict?.finalScore !== undefined) currentScore = s.verdict.finalScore;
+      if (s.phase === 'setup' || s.phase === 'banner') currentScore = 0;
+      updateStats(s.currentQuestion, s.totalQuestions, currentScore, s.level);
+
+      switch(s.phase) {
+        case 'setup': renderSetup(s); break;
+        case 'banner': renderBanner(s); break;
+        case 'question': renderQuestion(s); break;
+        case 'chat': renderChat(s); break;
+        case 'feedback': renderFeedback(s); break;
+        case 'verdict': renderVerdict(s); break;
+        default:
+          document.getElementById('phase-waiting').classList.remove('hidden');
+          setHost('welcome', "Welcome to JEO-PRD! Let's see if you really know your code.");
+      }
+    }
+
+    let selectedLevel = null;
+
+    function renderSetup(s) {
+      const el = document.getElementById('phase-setup');
+      selectedLevel = null;
+      el.querySelector('.card-body').innerHTML = `
+        <div class="waiting-content">
+          <div class="waiting-logo">JEO-PRD</div>
+          <div style="margin-bottom: 2rem; color: var(--text-muted);">Repo: <span style="color: var(--accent-light);">${esc(s.repoName || 'unknown')}</span></div>
+          <div style="font-size: 1.1rem; margin-bottom: 1.5rem;">Choose your difficulty:</div>
+          <div style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; margin-bottom: 1.5rem;">
+            <button class="level-btn" data-level="junior" onclick="toggleLevel('junior', this)">
+              <span class="level-icon">🌱</span>
+              <span class="level-name">Junior</span>
+              <span class="level-desc">3 questions</span>
+            </button>
+            <button class="level-btn" data-level="senior" onclick="toggleLevel('senior', this)">
+              <span class="level-icon">🚀</span>
+              <span class="level-name">Senior</span>
+              <span class="level-desc">5 questions</span>
+            </button>
+          </div>
+          <button id="start-btn" class="btn btn-primary" onclick="startQuiz()" disabled style="min-width: 160px;">Start Quiz</button>
+        </div>
+      `;
+      el.classList.remove('hidden');
+      setHost('welcome', `Welcome, ${s.devName || 'Developer'}! Pick your challenge level — Junior for the basics, Senior for the deep cuts.`);
+    }
+
+    function toggleLevel(level, btn) {
+      selectedLevel = level;
+      document.querySelectorAll('.level-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      document.getElementById('start-btn').disabled = false;
+    }
+
+    async function startQuiz() {
+      if (!selectedLevel) return;
+      const btn = document.getElementById('start-btn');
+      btn.disabled = true;
+      btn.textContent = 'Loading...';
+      document.querySelectorAll('.level-btn').forEach(b => b.disabled = true);
+      setHost('thinking', '', true);
+      try {
+        await fetch('/answer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ level: selectedLevel })
+        });
+      } catch(e) {
+        btn.disabled = false;
+        btn.textContent = 'Start Quiz';
+      }
+    }
+
+    function renderBanner(s) {
+      const el = document.getElementById('phase-banner');
+      el.querySelector('.card-body').innerHTML = `
+        <div class="waiting-content">
+          <div style="color: var(--text-muted); margin-bottom: 0.5rem;">Tonight's Contestant</div>
+          <div style="font-size: 2rem; font-weight: 700; margin-bottom: 1rem;">${esc(s.devName)}</div>
+          <div style="color: var(--text-muted);">${s.totalQuestions} questions</div>
+          <div class="dots" style="margin-top: 2rem;"><span></span><span></span><span></span></div>
+          <div style="color: var(--text-muted);">Preparing questions...</div>
+        </div>
+      `;
+      el.classList.remove('hidden');
+      setHost('welcome', "I've analyzed your code. Let's find out if you are reaaady to ship it...");
+    }
+
+    function renderQuestion(s) {
+      const el = document.getElementById('phase-question');
+      // Use cached question if state doesn't have one (e.g., chat phase)
+      const q = s.question || cachedQuestion || {};
+      if (s.question) cachedQuestion = s.question;
+      const pts = (s.currentQuestion || 1) * 100;
+
+      let code = q.codeSnippet ? `<div class="code-block"><pre><code>${esc(q.codeSnippet)}</code></pre></div>` : '';
+
+      el.innerHTML = `
+        <div class="card-header">
+          <span class="badge">${esc(q.archetype || 'Question')}</span>
+          <span class="repo-name">${esc(s.repoName || '')}</span>
+          <span class="points">${pts} pts</span>
+        </div>
+        <div class="card-body">
+          <div class="question-text">${esc(q.text || '')}</div>
+          ${code}
+          <div class="input-section">
+            <textarea id="answer-input" class="answer-input" placeholder="Type your answer..." ${submitting ? 'disabled' : ''}></textarea>
+            <div class="input-footer">
+              <span class="input-hint">Press Enter to send</span>
+            </div>
+          </div>
+        </div>
+      `;
+      el.classList.remove('hidden');
+
+      el.querySelectorAll('pre code').forEach(b => hljs.highlightElement(b));
+
+      const input = document.getElementById('answer-input');
+      if (input && !submitting) {
+        input.focus();
+        input.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } };
+      }
+
+      if (submitting) {
+        setHost('thinking', '', true, null);
+      } else {
+        setHost('thinking', "Take your time. What do you think?", false, null);
+      }
+
+      if (!quizData.find(d => d.q === s.currentQuestion)) {
+        quizData.push({ q: s.currentQuestion, text: q.text, archetype: q.archetype });
+      }
+    }
+
+    function renderChat(s) {
+      const chat = s.chat || {};
+      submitting = false;
+
+      // Re-render question with chat response from host
+      renderQuestion(s);
+      setHost('chat', chat.hostResponse || "Go on...");
+    }
+
+    function renderFeedback(s) {
+      const el = document.getElementById('phase-feedback');
+      const fb = s.feedback || {};
+      const result = fb.result || 'wrong';
+      const score = fb.score || 0;
+      const max = fb.maxScore || 100;
+      const pct = max > 0 ? Math.round(score / max * 100) : 0;
+      const isLast = (s.currentQuestion || 1) >= (s.totalQuestions || 1);
+
+      el.querySelector('.card-body').innerHTML = `
+        <div class="explanation">${esc(fb.explanation || 'No explanation.')}</div>
+        <div class="score-bar-section">
+          <div class="score-bar-header"><span>Score</span><span>${score} / ${max} pts (${pct}%)</span></div>
+          <div class="score-bar"><div class="score-fill" style="width: 0%"></div></div>
+        </div>
+        <div style="text-align: right;">
+          <button class="btn btn-primary" onclick="next(this)">${isLast ? 'See Results' : 'Next Question'} →</button>
+        </div>
+      `;
+      el.classList.remove('hidden');
+
+      setTimeout(() => { el.querySelector('.score-fill').style.width = `${pct}%`; }, 50);
+
+      const hostImg = result === 'correct' ? 'correct' : result === 'partial' ? 'partial' : 'wrong';
+      const speeches = {
+        correct: ["Brilliant!", "Outstanding!", "You know your code!"],
+        partial: ["Close, but not quite!", "You're on the right track!"],
+        wrong: ["Ooh, tough break!", "That's not it."]
+      };
+      setHost(hostImg, speeches[result][Math.floor(Math.random() * speeches[result].length)], false, result);
+
+      const d = quizData.find(x => x.q === s.currentQuestion);
+      if (d) { d.result = result; d.explanation = fb.explanation; }
+
+      if (result === 'correct') confetti(40);
+    }
+
+    function renderVerdict(s) {
+      const el = document.getElementById('phase-verdict');
+      const v = s.verdict || {};
+      const pct = v.percentage || 0;
+      const status = v.status || 'REVIEW FIRST';
+
+      // Timeline thresholds: DO NOT MERGE < 40%, RISKY < 60%, REVIEW FIRST < 80%, MERGE READY >= 80%
+      const thresholds = [
+        { label: 'Do Not Merge', pct: 0 },
+        { label: 'Risky', pct: 40 },
+        { label: 'Review First', pct: 60 },
+        { label: 'Merge Ready', pct: 80 }
+      ];
+
+      // statusIndex is the current level reached (0-3)
+      const statusIndex = pct >= 80 ? 3 : pct >= 60 ? 2 : pct >= 40 ? 1 : 0;
+      // Progress bar stops at current step: 0%, 33%, 66%, 100%
+      const progressPct = (statusIndex / 3) * 100;
+
+      const timelineHtml = thresholds.map((t, i) => {
+        const passed = i <= statusIndex;
+        const circleClass = passed ? 'passed' : '';
+        const icon = passed ? '✓' : '';
+        const labelClass = i === statusIndex ? 'active' : '';
+        return `
+          <div class="timeline-step">
+            <div class="timeline-circle ${circleClass}">${icon}</div>
+            <div class="timeline-label ${labelClass}">${t.label}</div>
+          </div>
+        `;
+      }).join('');
+
+      let weakHtml = '';
+      if (v.weakAreas?.length) {
+        weakHtml = `<div class="weak-areas"><h4>Areas to Review</h4><ul>${v.weakAreas.map(a => `<li>${esc(a)}</li>`).join('')}</ul></div>`;
+      }
+
+      el.querySelector('.card-body').innerHTML = `
+        <div class="verdict-content">
+          <div class="verdict-title">🏆 Final Results</div>
+          <div class="verdict-meta">${esc(s.devName)}</div>
+          <div class="verdict-score">${v.finalScore || 0} / ${v.maxScore || 0}</div>
+          <div style="color: var(--text-muted); margin-bottom: 1rem;">${pct}%</div>
+          <div class="verdict-timeline">
+            <div class="timeline-track"><div class="timeline-progress" style="width: 0%"></div></div>
+            ${timelineHtml}
+          </div>
+          ${weakHtml}
+          <div style="margin-top: 1.5rem; display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
+            <button class="btn btn-primary" onclick="moreQuestions(this)">+ More Questions</button>
+            <button class="btn btn-secondary" onclick="share()">📤 Share</button>
+          </div>
+        </div>
+      `;
+      el.classList.remove('hidden');
+
+      // Animate the progress bar
+      setTimeout(() => {
+        const progressBar = el.querySelector('.timeline-progress');
+        if (progressBar) progressBar.style.width = `${progressPct}%`;
+      }, 50);
+
+      if (pct >= 60) {
+        setHost('happy', "Congratulations! You've proven you know your code!");
+        setTimeout(() => confetti(100), 300);
+      } else {
+        setHost('disappointed', "Better luck next time. Maybe review that PR?");
+      }
+    }
+
+    async function moreQuestions(btn) {
+      btn.disabled = true;
+      btn.textContent = 'Loading...';
+      setHost('thinking', '', true);
+      try {
+        await fetch('/continue', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'more' })
+        });
+      } catch(e) { btn.disabled = false; btn.textContent = '+ More Questions'; }
+    }
+
+    async function submit() {
+      const input = document.getElementById('answer-input');
+      if (!input || !state) return;
+      const answer = input.value.trim();
+      if (!answer) return;
+
+      submitting = true;
+      input.disabled = true;
+      setHost('thinking', '', true);
+
+      const d = quizData.find(x => x.q === state.currentQuestion);
+      if (d) d.answer = answer;
+
+      try {
+        await fetch('/answer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ questionNumber: state.currentQuestion || 1, answer })
+        });
+      } catch(e) {
+        submitting = false;
+        input.disabled = false;
+        setHost('thinking', "Oops, try again.");
+      }
+    }
+
+    async function next(btn) {
+      btn.disabled = true;
+      btn.textContent = 'Loading...';
+      setHost('thinking', '', true);
+      try { await fetch('/continue', { method: 'POST' }); } catch(e) { btn.disabled = false; }
+    }
+
+    function share() {
+      const v = state?.verdict || {};
+      let t = `🏆 JEO-PRD: ${v.finalScore}/${v.maxScore} pts (${v.percentage}%) — ${v.status}\n`;
+      t += `${state?.devName}\n\n`;
+      quizData.forEach(d => {
+        const e = d.result === 'correct' ? '✅' : d.result === 'partial' ? '⚠️' : '❌';
+        t += `${e} ${d.text}\n`;
+      });
+      if (v.weakAreas?.length) t += `\n⚠️ Review: ${v.weakAreas.join(', ')}`;
+      t += `\n\n🎮 /jeo-prd in Claude Code`;
+      navigator.clipboard?.writeText(t).then(() => alert('Copied!'));
+    }
+
+    function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+    function confetti(n) {
+      const colors = ['#8B2942', '#22c55e', '#D4A84B', '#ef4444'];
+      for (let i = 0; i < n; i++) {
+        const p = document.createElement('div');
+        p.className = 'confetti';
+        p.style.cssText = `left:${Math.random()*100}vw;top:-10px;width:${6+Math.random()*6}px;height:${6+Math.random()*6}px;background:${colors[Math.floor(Math.random()*colors.length)]};position:fixed;`;
+        document.body.appendChild(p);
+        p.animate([
+          { transform: 'translateY(0) rotate(0deg)', opacity: 1 },
+          { transform: `translateY(100vh) rotate(${Math.random()*720}deg)`, opacity: 0 }
+        ], { duration: 2000 + Math.random()*1000, easing: 'ease-out' }).onfinish = () => p.remove();
+      }
+    }
+
+    connect();
+    setHost('welcome', "Welcome to JEO-PRD! Let's see if you really know your code.");
+  </script>
+</body>
+</html>
