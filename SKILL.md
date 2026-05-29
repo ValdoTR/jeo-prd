@@ -118,10 +118,12 @@ For each question:
   "question": {
     "archetype": "Bug Trap",
     "text": "What happens if user is null?",
-    "codeSnippet": "optional code"
+    "codeSnippet": "optional — relevant code excerpt"
   }
 }
 ```
+
+**Important:** The `text` field should be a question about the code, NOT contain the code itself. Put code in `codeSnippet` only. Don't duplicate code in both fields.
 
 **6b. Wait for answer:**
 
@@ -224,3 +226,4 @@ rm -rf .jeo-prd
 2. **All display in browser** — terminal is backstage
 3. **Score correctly** — Q1=100, Q2=200, etc. Running total.
 4. **explanation field** — ALWAYS non-empty string
+5. **Use backticks for inline code** — In question text, wrap code references in backticks: `\`DateTime\``, `\`$userId\``, `\`fetchUser()\``. The UI renders these as highlighted inline code.

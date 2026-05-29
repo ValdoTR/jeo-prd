@@ -73,6 +73,28 @@ The quiz analyzes your `git diff`, generates questions about your changes, and s
 
 Questions are generated from your actual diff — no generic trivia, just your code.
 
+### Architecture
+
+```mermaid
+flowchart LR
+    subgraph Claude Code
+        A[Skill]
+    end
+    subgraph Local
+        B[Node Server]
+        C[Browser UI]
+    end
+
+    A -- "state.json" --> B
+    B -- "SSE / poll" --> C
+    C -- "POST /answer" --> B
+    B -- "answers.json" --> A
+```
+
+The skill uses files as IPC between Claude and the browser:
+- **Claude → UI**: Writes quiz state to `.jeo-prd/state.json`, server watches and pushes to browser
+- **UI → Claude**: Browser posts answers, server writes to `.jeo-prd/answers.json`, Claude's polling loop detects and reads
+
 ## Requirements
 
 - [Claude Code](https://claude.ai/code) with Skills support
