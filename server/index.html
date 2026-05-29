@@ -40,7 +40,7 @@
       inset: 0;
       background:
         radial-gradient(ellipse at 0% 0%, rgba(139, 41, 66, 0.15) 0%, transparent 50%),
-        radial-gradient(ellipse at 100% 100%, rgba(34, 197, 94, 0.1) 0%, transparent 50%);
+        radial-gradient(ellipse at 100% 100%, rgba(212, 168, 75, 0.1) 0%, transparent 50%);
       pointer-events: none;
       z-index: -1;
     }
@@ -243,6 +243,15 @@
       line-height: 1.7;
       margin-bottom: 1.25rem;
     }
+    .inline-code {
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--accent-light);
+      padding: 0.12rem 0.3rem;
+      border-radius: 3px;
+      font-family: 'SF Mono', Consolas, monospace;
+      font-size: 0.8em;
+    }
 
     .code-block {
       background: var(--bg);
@@ -264,7 +273,7 @@
       background: var(--surface-2);
       border: 2px solid var(--border);
       border-radius: 0.75rem;
-      padding: 1rem;
+      padding: 0.5rem;
       color: var(--text);
       font-family: inherit;
       font-size: 1rem;
@@ -283,14 +292,15 @@
 
     .input-footer {
       display: flex;
-      justify-content: flex-end;
+      justify-content: flex-start;
       align-items: center;
-      margin-top: 0.75rem;
-      gap: 0.75rem;
+      margin-top: 0.5rem;
+      gap: 0.5rem;
     }
 
     .input-hint {
       font-size: 0.8rem;
+      font-style: italic;
       color: var(--text-muted);
     }
 
@@ -391,6 +401,7 @@
       font-weight: 800;
       background: linear-gradient(135deg, var(--accent), var(--gold));
       -webkit-background-clip: text;
+      background-clip: text;
       -webkit-text-fill-color: transparent;
       margin: 1rem 0;
     }
@@ -492,12 +503,11 @@
       text-align: center;
     }
     .waiting-logo {
-      font-size: 3rem;
-      font-weight: 800;
-      background: linear-gradient(135deg, var(--accent), var(--accent-light));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
       margin-bottom: 1.5rem;
+    }
+    .waiting-logo img {
+      height: 80px;
+      width: auto;
     }
     .waiting-text { color: var(--text-muted); margin-bottom: 0.5rem; }
     .waiting-hint { font-size: 0.875rem; color: var(--text-muted); }
@@ -563,6 +573,27 @@
     .confetti { position: fixed; pointer-events: none; z-index: 1000; }
     .hidden { display: none !important; }
 
+    .btn-abandon {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      font-family: inherit;
+      font-size: 0.8rem;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s;
+      z-index: 100;
+    }
+    .btn-abandon:hover {
+      border-color: var(--error);
+      color: var(--error);
+      background: rgba(239, 68, 68, 0.1);
+    }
+
     @media (max-width: 640px) {
       .header { flex-wrap: wrap; gap: 0.5rem; }
       .header-stats { width: 100%; justify-content: center; }
@@ -576,12 +607,12 @@
 <body>
   <div class="app">
     <header class="header">
-      <div class="logo"><img src="/images/Logo.png" alt="JEO-PRD"></div>
+      <div class="logo"><img src="/images/Logo_Small.png" alt="JEO-PRD"></div>
       <div class="header-stats">
         <div class="stat">Question <span id="q-num">-</span> / <span id="q-total">-</span></div>
         <div class="level-badge" id="level-badge"></div>
         <div class="score-pill" id="score-pill">0 pts</div>
-      </div>
+        </div>
     </header>
 
     <div class="host-section">
@@ -595,10 +626,9 @@
       <div id="phase-waiting" class="card">
         <div class="card-body">
           <div class="waiting-content">
-            <div class="waiting-logo">JEO-PRD</div>
-            <div class="dots"><span></span><span></span><span></span></div>
             <div class="waiting-text">Waiting for contestants...</div>
-            <div class="waiting-hint">Run <code>/jeo-prd</code> in Claude Code</div>
+            <div class="dots"><span></span><span></span><span></span></div>
+            <div class="waiting-hint">Run <code class="inline-code">/jeo-prd</code> in Claude Code</div>
           </div>
         </div>
       </div>
@@ -609,7 +639,9 @@
       <div id="phase-chat" class="card hidden"></div>
       <div id="phase-feedback" class="card hidden"><div class="card-body"></div></div>
       <div id="phase-verdict" class="card hidden"><div class="card-body"></div></div>
+      <div id="phase-abandoned" class="card hidden"><div class="card-body"></div></div>
     </main>
+    <button id="abandon-btn" class="btn-abandon hidden" onclick="abandonQuiz()">Abandon</button>
   </div>
 
   <script>
@@ -631,6 +663,9 @@
 
     let currentScore = 0;
     let cachedQuestion = null;
+    let lastStateChange = Date.now();
+    let abandoned = false;
+    const ABANDON_TIMEOUT_MS = 60 * 60 * 1000; // 60 minutes
 
     function setHost(img, text, loading = false, mood = null) {
       document.getElementById('host-img').src = IMAGES[img] || IMAGES.welcome;
@@ -663,18 +698,51 @@
       }
     }
 
-    // SSE + polling
+    // SSE + aggressive polling for reliability
+    let eventSource = null;
+    let lastUpdate = Date.now();
+
     function connect() {
-      const es = new EventSource('/events');
-      es.onmessage = e => { try { handle(JSON.parse(e.data)); } catch(err) {} };
-      es.onerror = () => setTimeout(connect, 2000);
+      if (eventSource) {
+        eventSource.close();
+      }
+      eventSource = new EventSource('/events');
+      eventSource.onmessage = e => {
+        lastUpdate = Date.now();
+        try { handle(JSON.parse(e.data)); } catch(err) {}
+      };
+      eventSource.onerror = () => {
+        eventSource.close();
+        eventSource = null;
+        setTimeout(connect, 1000);
+      };
     }
+
+    // Aggressive polling as primary mechanism (SSE can be flaky)
     setInterval(async () => {
-      try { handle(await (await fetch('/state')).json()); } catch(e) {}
-    }, 500);
+      try {
+        const res = await fetch('/state');
+        if (res.ok) {
+          lastUpdate = Date.now();
+          handle(await res.json());
+        }
+      } catch(e) {}
+    }, 300);
+
+    // Reconnect SSE if no updates for 10 seconds
+    setInterval(() => {
+      if (Date.now() - lastUpdate > 10000) {
+        console.log('[jeo-prd] No updates for 10s, reconnecting SSE...');
+        connect();
+      }
+    }, 5000);
 
     function handle(s) {
-      if (JSON.stringify(s) === JSON.stringify(state)) return;
+      if (abandoned) return;
+      const stateStr = JSON.stringify(s);
+      if (stateStr === JSON.stringify(state)) return;
+
+      lastStateChange = Date.now();
       const prev = state?.phase;
       state = s;
 
@@ -690,6 +758,11 @@
       if (s.phase === 'setup' || s.phase === 'banner') currentScore = 0;
       updateStats(s.currentQuestion, s.totalQuestions, currentScore, s.level);
 
+      // Show/hide abandon button based on phase
+      const abandonBtn = document.getElementById('abandon-btn');
+      const activePhases = ['setup', 'banner', 'question', 'chat', 'feedback'];
+      abandonBtn.classList.toggle('hidden', !activePhases.includes(s.phase));
+
       switch(s.phase) {
         case 'setup': renderSetup(s); break;
         case 'banner': renderBanner(s); break;
@@ -703,6 +776,42 @@
       }
     }
 
+    // Check for abandon timeout every minute
+    setInterval(() => {
+      if (abandoned || !state || state.phase === 'waiting' || state.phase === 'verdict') return;
+      if (Date.now() - lastStateChange > ABANDON_TIMEOUT_MS) {
+        renderAbandoned('timeout');
+      }
+    }, 60000);
+
+    function abandonQuiz() {
+      if (confirm('Are you sure you want to quit the quiz?')) {
+        renderAbandoned('user');
+      }
+    }
+
+    function renderAbandoned(reason) {
+      abandoned = true;
+      document.querySelectorAll('[id^="phase-"]').forEach(el => el.classList.add('hidden'));
+      document.getElementById('abandon-btn').classList.add('hidden');
+
+      const el = document.getElementById('phase-abandoned');
+      const message = reason === 'timeout'
+        ? 'Quiz timed out due to inactivity.'
+        : 'Quiz abandoned.';
+
+      el.querySelector('.card-body').innerHTML = `
+        <div class="waiting-content">
+          <div style="font-size: 1.2rem; margin-bottom: 1rem;">${message}</div>
+          <div style="color: var(--text-muted); margin-bottom: 2rem;">Run <code class="inline-code">/jeo-prd</code> in Claude Code to start a new quiz.</div>
+          <button class="btn btn-primary" onclick="location.reload()">Refresh</button>
+        </div>
+      `;
+      el.classList.remove('hidden');
+      setHost('disappointed', reason === 'timeout' ? "Looks like you got busy. Come back when you're ready!" : "See you next time!");
+      updateStats('-', '-', 0, null);
+    }
+
     let selectedLevel = null;
 
     function renderSetup(s) {
@@ -710,19 +819,18 @@
       selectedLevel = null;
       el.querySelector('.card-body').innerHTML = `
         <div class="waiting-content">
-          <div class="waiting-logo">JEO-PRD</div>
-          <div style="margin-bottom: 2rem; color: var(--text-muted);">Repo: <span style="color: var(--accent-light);">${esc(s.repoName || 'unknown')}</span></div>
+          <div style="margin-bottom: 2rem; color: var(--text-muted);">Repository: <span style="color: var(--accent-light);">${esc(s.repoName || 'unknown')}</span></div>
           <div style="font-size: 1.1rem; margin-bottom: 1.5rem;">Choose your difficulty:</div>
           <div style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; margin-bottom: 1.5rem;">
             <button class="level-btn" data-level="junior" onclick="toggleLevel('junior', this)">
               <span class="level-icon">🌱</span>
               <span class="level-name">Junior</span>
-              <span class="level-desc">3 questions</span>
+              <span class="level-desc">3 easy questions</span>
             </button>
             <button class="level-btn" data-level="senior" onclick="toggleLevel('senior', this)">
               <span class="level-icon">🚀</span>
               <span class="level-name">Senior</span>
-              <span class="level-desc">5 questions</span>
+              <span class="level-desc">5 tough questions</span>
             </button>
           </div>
           <button id="start-btn" class="btn btn-primary" onclick="startQuiz()" disabled style="min-width: 160px;">Start Quiz</button>
@@ -780,7 +888,7 @@
       if (s.question) cachedQuestion = s.question;
       const pts = (s.currentQuestion || 1) * 100;
 
-      let code = q.codeSnippet ? `<div class="code-block"><pre><code>${esc(q.codeSnippet)}</code></pre></div>` : '';
+      let code = q.codeSnippet ? `<div class="code-block"><pre><code>${esc(unescapeCode(q.codeSnippet))}</code></pre></div>` : '';
 
       el.innerHTML = `
         <div class="card-header">
@@ -789,7 +897,7 @@
           <span class="points">${pts} pts</span>
         </div>
         <div class="card-body">
-          <div class="question-text">${esc(q.text || '')}</div>
+          <div class="question-text">${formatInlineCode(q.text || '')}</div>
           ${code}
           <div class="input-section">
             <textarea id="answer-input" class="answer-input" placeholder="Type your answer..." ${submitting ? 'disabled' : ''}></textarea>
@@ -839,7 +947,7 @@
       const isLast = (s.currentQuestion || 1) >= (s.totalQuestions || 1);
 
       el.querySelector('.card-body').innerHTML = `
-        <div class="explanation">${esc(fb.explanation || 'No explanation.')}</div>
+        <div class="explanation">${formatInlineCode(fb.explanation || 'No explanation.')}</div>
         <div class="score-bar-section">
           <div class="score-bar-header"><span>Score</span><span>${score} / ${max} pts (${pct}%)</span></div>
           <div class="score-bar"><div class="score-fill" style="width: 0%"></div></div>
@@ -996,6 +1104,15 @@
     }
 
     function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+    function unescapeCode(s) {
+      if (!s) return '';
+      return s.replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\"/g, '"');
+    }
+    function formatInlineCode(s) {
+      if (!s) return '';
+      // Escape HTML first, then convert `code` to <code>code</code>
+      return esc(s).replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
+    }
 
     function confetti(n) {
       const colors = ['#8B2942', '#22c55e', '#D4A84B', '#ef4444'];
