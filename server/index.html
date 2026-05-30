@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>JEO-PRD</title>
+  <link rel="icon" type="image/png" sizes="96x96" href="/images/favicon.png">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <style>
@@ -758,10 +759,11 @@
       if (s.phase === 'setup' || s.phase === 'banner') currentScore = 0;
       updateStats(s.currentQuestion, s.totalQuestions, currentScore, s.level);
 
-      // Show/hide abandon button based on phase
+      // Show/hide abandon button based on phase, rename to "Quit" on verdict
       const abandonBtn = document.getElementById('abandon-btn');
-      const activePhases = ['setup', 'banner', 'question', 'chat', 'feedback'];
+      const activePhases = ['setup', 'banner', 'question', 'chat', 'feedback', 'verdict'];
       abandonBtn.classList.toggle('hidden', !activePhases.includes(s.phase));
+      abandonBtn.textContent = s.phase === 'verdict' ? 'Quit' : 'Abandon';
 
       switch(s.phase) {
         case 'setup': renderSetup(s); break;
@@ -784,8 +786,18 @@
       }
     }, 60000);
 
-    function abandonQuiz() {
-      if (confirm('Are you sure you want to quit the quiz?')) {
+    async function abandonQuiz() {
+      const isVerdict = state?.phase === 'verdict';
+      if (isVerdict || confirm('Are you sure you want to quit the quiz?')) {
+        try {
+          // Verdict phase waits on /continue, other phases wait on /answer
+          const endpoint = isVerdict ? '/continue' : '/answer';
+          await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ abandoned: true })
+          });
+        } catch(e) {}
         renderAbandoned('user');
       }
     }

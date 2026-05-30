@@ -64,7 +64,7 @@ while [ ! -f .jeo-prd/answers.json ]; do sleep 2; done
 cat .jeo-prd/answers.json
 ```
 
-The file will contain `{ "level": "junior" }` or `{ "level": "senior" }`.
+The file will contain `{ "level": "junior" }` or `{ "level": "senior" }`. If it contains `"abandoned": true`, say "Quiz abandoned. See you next time!" and skip to step 8 (cleanup).
 
 **After getting level** (from argument or UI):
 - `junior` = 3 questions
@@ -132,6 +132,8 @@ rm -f .jeo-prd/answers.json
 while [ ! -f .jeo-prd/answers.json ]; do sleep 2; done
 cat .jeo-prd/answers.json
 ```
+
+**Check for abandon:** If answers.json contains `"abandoned": true`, say "Quiz abandoned. See you next time!" and skip to step 8 (cleanup).
 
 **6c. Evaluate response:**
 
@@ -210,7 +212,7 @@ cat .jeo-prd/continue
 ```
 
 - If `"action": "more"` → generate more questions at same level, go back to step 6
-- Otherwise → cleanup and end
+- If `"abandoned": true` or no action → cleanup and end
 
 ### 8. Cleanup
 
