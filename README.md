@@ -9,6 +9,11 @@
   Prevents out-of-control-vibe-coding — no more merging code you can't explain.
 </p>
 
+<p align="center">
+  <strong>🧪 Beta</strong> — This skill is in beta testing. All feedback is welcome!<br>
+  <a href="https://github.com/ValdoTR/jeo-prd/issues">Open an issue</a> or submit a PR.
+</p>
+
 ---
 
 <p align="center">
