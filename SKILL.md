@@ -28,7 +28,16 @@ REPO_NAME=$(basename "$(git rev-parse --show-toplevel 2>/dev/null)" 2>/dev/null 
 
 Read the git diff: `git diff HEAD 2>/dev/null | head -500`
 
-If diff is empty, say "No code changes to quiz on! Stage some code first." and stop.
+**If the working diff is empty, fall back to the last commit:**
+
+```bash
+git diff HEAD~1 HEAD 2>/dev/null | head -500
+```
+
+- If this produces a diff → quiz on the last commit. Tell the player which commit they're being tested on, e.g. *"No uncommitted changes — quizzing you on your last commit: `<subject>`"* (get the subject with `git log -1 --format=%s`).
+- If there is still no diff (no commits, or `HEAD~1` doesn't exist) → say "No code changes to quiz on! Commit or stage some code first." and stop.
+
+The commit diff has the same shape as a working diff, so question generation and grading are identical from here on — when reading full files for the answer key, just remember the relevant version is the committed one.
 
 ### 2. Start the web UI
 
@@ -89,6 +98,8 @@ Wait 2 seconds.
 
 Based on the diff, create `TOTAL_QUESTIONS` questions. Calibrate difficulty to level:
 
+**Establish the answer key first.** Before asking each question, write down — for yourself — the correct answer, grounded in the actual source. The 500-line diff excerpt is not enough context: use the Read tool to open the full file(s) the question touches so you understand the real behavior, not a guess from a partial diff. You are grading against the code, never against your first impression of it.
+
 **Junior archetypes:**
 - Bug Trap — edge case or null input
 - What Does This Do — explain the code
@@ -143,7 +154,8 @@ If NOT a real answer (joking, thinking aloud, chatting):
 - Go back to 6b
 
 If IS a real answer:
-- Grade it (correct/partial/wrong)
+- Grade it (correct/partial/wrong) against the code, not against your initial impression.
+- **Verify before downgrading.** If the player's answer conflicts with what you expected, re-read the relevant source with the Read tool to confirm who is right *before* marking it partial or wrong. If the code confirms the player, grade it correct. The code is the only authority — the player being confident never lowers the bar, and your first reading of a partial diff is not ground truth.
 - Continue to 6d
 
 **6d. Write feedback:**
@@ -168,13 +180,28 @@ If IS a real answer:
 
 Points: Q1=100, Q2=200, Q3=300, Q4=400, Q5=500
 
-**6e. Wait for continue:**
+**6e. Wait for continue OR challenge:**
+
+The player can either move on or challenge your grade. Wait for whichever comes first:
 
 ```bash
-rm -f .jeo-prd/continue && while [ ! -f .jeo-prd/continue ]; do sleep 1; done
+rm -f .jeo-prd/answers.json .jeo-prd/continue
+while [ ! -f .jeo-prd/continue ] && [ ! -f .jeo-prd/answers.json ]; do sleep 1; done
+[ -f .jeo-prd/answers.json ] && cat .jeo-prd/answers.json
+[ -f .jeo-prd/continue ] && cat .jeo-prd/continue
 ```
 
-Check `.jeo-prd/continue` content:
+**If `answers.json` appeared (a challenge)** — it contains `{ "challenge": "..." }`:
+
+A challenge is an appeal of *the original answer*, not a chance to submit a new one. The grade stays attached to what the player actually wrote in 6b. Hold this line strictly:
+
+- **The only way a challenge succeeds:** the player points to something *in the code* that you missed or misread, which makes their **original answer** correct. You re-read that source with the Read tool, confirm they're right, and upgrade.
+- **A challenge does NOT succeed if** the player restates, "clarifies," or expands their answer ("oh, that's what I meant", "I actually meant X"), argues without referencing the code, or supplies a *better* answer than the one they gave. None of that changes what they originally submitted. Judge the original wording on its own merits — if it was wrong or partial, it stays wrong or partial. Reply, respectfully: the grade reflects the answer as given, and re-explaining it after the fact doesn't change it.
+- Re-reading the code can only ever *confirm* the original answer was right; it can never promote a new, post-hoc answer. When in doubt, the grade stands.
+
+Then rewrite the `feedback` state: if the code genuinely proves the original answer correct, update `result`/`explanation`/`score`; otherwise keep the grade and explain briefly why it stands (cite the code). Go back to the start of 6e and wait again.
+
+**If `continue` appeared:**
 - If contains `"action": "more"` → generate more questions, continue loop
 - Otherwise → proceed to verdict
 
