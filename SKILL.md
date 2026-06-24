@@ -26,16 +26,23 @@ BRANCH=$(git branch --show-current 2>/dev/null || echo "main")
 REPO_NAME=$(basename "$(git rev-parse --show-toplevel 2>/dev/null)" 2>/dev/null || basename "$(pwd)")
 ```
 
-Read the git diff: `git diff HEAD 2>/dev/null | head -500`
-
-**If the working diff is empty, fall back to the last commit:**
+**Decide what to quiz on with a deterministic check — do not eyeball the diff.** `git diff HEAD` does NOT include untracked files, so check both tracked changes and untracked files explicitly:
 
 ```bash
-git diff HEAD~1 HEAD 2>/dev/null | head -500
+TRACKED=$(git diff HEAD --name-only 2>/dev/null | wc -l | tr -d ' ')
+UNTRACKED=$(git ls-files --others --exclude-standard 2>/dev/null | wc -l | tr -d ' ')
+echo "tracked=$TRACKED untracked=$UNTRACKED"
 ```
 
-- If this produces a diff → quiz on the last commit. Tell the player which commit they're being tested on, e.g. *"No uncommitted changes — quizzing you on your last commit: `<subject>`"* (get the subject with `git log -1 --format=%s`).
-- If there is still no diff (no commits, or `HEAD~1` doesn't exist) → say "No code changes to quiz on! Commit or stage some code first." and stop.
+- **If `TRACKED` > 0 OR `UNTRACKED` > 0 → quiz on the working changes.** Read the diff: `git diff HEAD 2>/dev/null | head -500`. If there are untracked files worth quizzing on, Read them directly (they won't appear in the diff). Do NOT fall back to the last commit.
+- **Only if BOTH are 0 → fall back to the last commit:**
+
+  ```bash
+  git diff HEAD~1 HEAD 2>/dev/null | head -500
+  ```
+
+  - If this produces a diff → quiz on the last commit. Tell the player which commit, e.g. *"No uncommitted changes — quizzing you on your last commit: `<subject>`"* (subject via `git log -1 --format=%s`).
+  - If still nothing (no commits, or `HEAD~1` doesn't exist) → say "No code changes to quiz on! Commit or stage some code first." and stop.
 
 The commit diff has the same shape as a working diff, so question generation and grading are identical from here on — when reading full files for the answer key, just remember the relevant version is the committed one.
 
@@ -54,7 +61,11 @@ Check `$ARGUMENTS`:
 - If `junior` or `senior` is passed → use that level
 - If nothing passed → show setup screen in UI
 
-**If no level specified**, write setup state:
+**If no level specified**, clear any stale answer FIRST, then write setup state:
+
+```bash
+rm -f .jeo-prd/answers.json
+```
 
 ```json
 {
@@ -65,10 +76,9 @@ Check `$ARGUMENTS`:
 }
 ```
 
-Then wait for user to pick level:
+Then wait for the user to pick a level — **do NOT `rm` again here**, or a fast click made before this loop runs would be deleted:
 
 ```bash
-rm -f .jeo-prd/answers.json
 while [ ! -f .jeo-prd/answers.json ]; do sleep 2; done
 cat .jeo-prd/answers.json
 ```
@@ -115,7 +125,11 @@ Based on the diff, create `TOTAL_QUESTIONS` questions. Calibrate difficulty to l
 
 For each question:
 
-**6a. Write question state:**
+**6a. Write question state:** Clear any stale answer FIRST, then render the question:
+
+```bash
+rm -f .jeo-prd/answers.json
+```
 
 ```json
 {
@@ -136,10 +150,9 @@ For each question:
 
 **Important:** The `text` field should be a question about the code, NOT contain the code itself. Put code in `codeSnippet` only. Don't duplicate code in both fields.
 
-**6b. Wait for answer:**
+**6b. Wait for answer** — **do NOT `rm` here** (it was already cleared in 6a; clearing now would delete a fast answer):
 
 ```bash
-rm -f .jeo-prd/answers.json
 while [ ! -f .jeo-prd/answers.json ]; do sleep 2; done
 cat .jeo-prd/answers.json
 ```
@@ -158,7 +171,11 @@ If IS a real answer:
 - **Verify before downgrading.** If the player's answer conflicts with what you expected, re-read the relevant source with the Read tool to confirm who is right *before* marking it partial or wrong. If the code confirms the player, grade it correct. The code is the only authority — the player being confident never lowers the bar, and your first reading of a partial diff is not ground truth.
 - Continue to 6d
 
-**6d. Write feedback:**
+**6d. Write feedback:** Clear any stale continue/answer signals FIRST, then render feedback:
+
+```bash
+rm -f .jeo-prd/answers.json .jeo-prd/continue
+```
 
 ```json
 {
@@ -178,18 +195,22 @@ If IS a real answer:
 }
 ```
 
-Points: Q1=100, Q2=200, Q3=300, Q4=400, Q5=500
+**Flat scoring** — every question is worth the same regardless of position:
+- correct = 100, partial = 50, wrong = 0
+- `score` = running total so far; `maxScore` = (questions asked so far) × 100
+- The final percentage is just "how many questions you got right", which is what the verdict is meant to convey.
 
 **6e. Wait for continue OR challenge:**
 
-The player can either move on or challenge your grade. Wait for whichever comes first:
+The player can either move on or challenge your grade. Wait for whichever comes first — **do NOT `rm` here** (already cleared in 6d; clearing now would delete a fast click):
 
 ```bash
-rm -f .jeo-prd/answers.json .jeo-prd/continue
 while [ ! -f .jeo-prd/continue ] && [ ! -f .jeo-prd/answers.json ]; do sleep 1; done
 [ -f .jeo-prd/answers.json ] && cat .jeo-prd/answers.json
 [ -f .jeo-prd/continue ] && cat .jeo-prd/continue
 ```
+
+Note: after handling a challenge (rewriting `feedback`), clear the signals again before looping back to wait — `rm -f .jeo-prd/answers.json .jeo-prd/continue` — since a new render is about to happen.
 
 **If `answers.json` appeared (a challenge)** — it contains `{ "challenge": "..." }`:
 
@@ -206,6 +227,12 @@ Then rewrite the `feedback` state: if the code genuinely proves the original ans
 - Otherwise → proceed to verdict
 
 ### 7. Final verdict
+
+Clear any stale continue signal FIRST, then render the verdict:
+
+```bash
+rm -f .jeo-prd/continue
+```
 
 ```json
 {
@@ -231,10 +258,10 @@ Status:
 - ≥40%: RISKY
 - <40%: DO NOT MERGE
 
-**Wait for user action:**
+**Wait for user action** — **do NOT `rm` here** (already cleared before rendering the verdict):
 
 ```bash
-rm -f .jeo-prd/continue && while [ ! -f .jeo-prd/continue ]; do sleep 1; done
+while [ ! -f .jeo-prd/continue ]; do sleep 1; done
 cat .jeo-prd/continue
 ```
 
@@ -251,8 +278,8 @@ rm -rf .jeo-prd
 
 ## Important
 
-1. **Use printf to write state files** — NEVER use heredocs (`cat << EOF`). Always use: `printf '%s' '{"phase":"setup",...}' > .jeo-prd/state.json`
+1. **Write state files atomically** — NEVER use heredocs (`cat << EOF`). Write to a temp file in the same dir, then `mv` it into place so the server never reads a half-written file: `printf '%s' '{"phase":"setup",...}' > .jeo-prd/state.json.tmp && mv -f .jeo-prd/state.json.tmp .jeo-prd/state.json`
 2. **All display in browser** — terminal is backstage
-3. **Score correctly** — Q1=100, Q2=200, etc. Running total.
+3. **Score correctly** — flat: correct=100, partial=50, wrong=0 per question. `maxScore` = questions asked × 100. Running total.
 4. **explanation field** — ALWAYS non-empty string
 5. **Use backticks for inline code** — In question text, wrap code references in backticks: `\`DateTime\``, `\`$userId\``, `\`fetchUser()\``. The UI renders these as highlighted inline code.
