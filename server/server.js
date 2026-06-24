@@ -46,18 +46,24 @@ function checkIdleTimeout() {
   }
 }
 
+let lastGoodState = '';
+
 function readState() {
   try {
     if (fs.existsSync(STATE_FILE)) {
       const content = fs.readFileSync(STATE_FILE, 'utf8');
-      // Validate JSON
+      // Validate JSON — a non-atomic write may be caught mid-flush
       JSON.parse(content);
+      lastGoodState = content;
       return content;
     }
   } catch (e) {
+    // Truncated/partial read during a write: keep the last good state
+    // instead of flashing back to the waiting screen.
+    if (lastGoodState) return lastGoodState;
     console.error('[quiz-server] Error reading state:', e.message);
   }
-  return JSON.stringify({ phase: 'waiting', message: 'Waiting for quiz to start...' });
+  return lastGoodState || JSON.stringify({ phase: 'waiting', message: 'Waiting for quiz to start...' });
 }
 
 function checkAnswerReady() {
