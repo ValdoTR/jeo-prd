@@ -898,7 +898,7 @@
       // Use cached question if state doesn't have one (e.g., chat phase)
       const q = s.question || cachedQuestion || {};
       if (s.question) cachedQuestion = s.question;
-      const pts = (s.currentQuestion || 1) * 100;
+      const pts = 100;
 
       let code = q.codeSnippet ? `<div class="code-block"><pre><code>${esc(unescapeCode(q.codeSnippet))}</code></pre></div>` : '';
 
@@ -999,18 +999,19 @@
       const pct = v.percentage || 0;
       const status = v.status || 'REVIEW FIRST';
 
-      // Timeline thresholds: DO NOT MERGE < 40%, RISKY < 60%, REVIEW FIRST < 80%, MERGE READY >= 80%
+      // Timeline thresholds: DO NOT MERGE < 40%, RISKY < 60%, REVIEW FIRST < 80%, MERGE READY >= 80%, PERFECT = 100%
       const thresholds = [
         { label: 'Do Not Merge', pct: 0 },
         { label: 'Risky', pct: 40 },
         { label: 'Review First', pct: 60 },
-        { label: 'Merge Ready', pct: 80 }
+        { label: 'Merge Ready', pct: 80 },
+        { label: 'Perfect', pct: 100 }
       ];
 
-      // statusIndex is the current level reached (0-3)
-      const statusIndex = pct >= 80 ? 3 : pct >= 60 ? 2 : pct >= 40 ? 1 : 0;
-      // Progress bar stops at current step: 0%, 33%, 66%, 100%
-      const progressPct = (statusIndex / 3) * 100;
+      // statusIndex is the current level reached (0-4). Only a flawless run fills the last step.
+      const statusIndex = pct >= 100 ? 4 : pct >= 80 ? 3 : pct >= 60 ? 2 : pct >= 40 ? 1 : 0;
+      // Progress bar stops at current step: 0%, 25%, 50%, 75%, 100%
+      const progressPct = (statusIndex / 4) * 100;
 
       const timelineHtml = thresholds.map((t, i) => {
         const passed = i <= statusIndex;
